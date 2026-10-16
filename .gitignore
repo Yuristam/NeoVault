@@ -361,3 +361,11 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# JetBrains
+/.idea/
+
+# env
+/.env
+/src/Services/Accounts/Accounts.API/appsettings.json
+/src/Services/Accounts/Accounts.API/appsettings.Development.json
