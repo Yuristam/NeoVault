@@ -1,17 +1,16 @@
 using Accounts.API.Data;
+using Accounts.API.Endpoints;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AccountsDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("AccountsDb")));
+builder.Services.AddProblemDetails();  // for errors
 
 var app = builder.Build();
 
-app.MapGet("/accounts/{id:guid}", async (Guid id, AccountsDbContext db) =>
-{
-    var account = await db.Accounts.FindAsync(id);
-    return account is null ? Results.NotFound() : Results.Ok(account);
-});
+app.MapAccountEndpoints();
+// app.MapLedgerEndpoints();
 
 app.Run();

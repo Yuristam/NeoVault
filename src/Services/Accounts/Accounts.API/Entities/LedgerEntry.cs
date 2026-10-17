@@ -13,4 +13,14 @@ public sealed class LedgerEntry
     public DateTime CreatedAt { get; private set; }
     
     private LedgerEntry() { }
+
+    public LedgerEntry(Guid transactionId, Guid accountId, long amount, EntryDirection direction, long balanceAfter)
+    {
+        TransactionId = transactionId;
+        AccountId = accountId;
+        Amount = amount;
+        Direction = direction;
+        BalanceAfter = balanceAfter;
+        CreatedAt = DateTime.UtcNow;
+    }
 }
