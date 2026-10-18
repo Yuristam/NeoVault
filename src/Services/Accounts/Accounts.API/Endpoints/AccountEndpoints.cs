@@ -1,7 +1,5 @@
-﻿using Accounts.API.Contracts;
-using Accounts.API.Data;
+﻿using Accounts.API.Data;
 using Accounts.API.Domain;
-using Accounts.API.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace Accounts.API.Endpoints
@@ -12,48 +10,43 @@ namespace Accounts.API.Endpoints
         {
             var group = app.MapGroup("/accounts");
 
-            // POST /accounts — открыть счёт
-            group.MapPost("/", async (OpenAccountRequest req, AccountsDbContext db) =>
+            // GET: Get all accounts 
+            group.MapGet("/", async (AccountsDbContext db) =>
+                Results.Ok(await db.Accounts.ToListAsync()));
+
+            // GET: Get account by id
+            group.MapGet("/{id}", async (Guid id, AccountsDbContext db) =>
             {
-                var account = new Account(Guid.NewGuid(), req.UserId, req.Currency);
+                var account = await db.Accounts.FindAsync(id);
+                
+                return account == null 
+                    ? Results.NotFound() 
+                    : Results.Ok();
+            });
+
+            // POST: Create account
+            group.MapPost("/create-account", async (string currency, AccountsDbContext db) =>
+            {
+                var account = new Account(Guid.NewGuid(), Guid.NewGuid(), currency);
+                
                 db.Accounts.Add(account);
                 await db.SaveChangesAsync();
-                return Results.Created($"/accounts/{account.Id}", new { account.Id });
+
+                return Results.Ok(account);
             });
-
-            // POST /accounts/{id}/top-up — пополнение (первая запись в ledger!)
-            group.MapPost("/{id:guid}/top-up", async (Guid id, TopUpRequest req, AccountsDbContext db) =>
+            
+            // DELETE: Delete account
+            group.MapDelete("/delete-account", async (Guid id, AccountsDbContext db) =>
             {
-                await using var tx = await db.Database.BeginTransactionAsync();
-
                 var account = await db.Accounts.FindAsync(id);
-                if (account is null) return Results.NotFound();
+                
+                if (account == null) return Results.NotFound();
 
-                var balance = await db.LedgerEntries
-                    .Where(e => e.AccountId == id)
-                    .SumAsync(e => (long?)e.Direction * e.Amount) ?? 0;
-
-                var entry = new LedgerEntry(Guid.NewGuid(), id, req.Amount, EntryDirection.Credit, balance + req.Amount);
-                db.LedgerEntries.Add(entry);
+                db.Accounts.Remove(account);
                 await db.SaveChangesAsync();
-                await tx.CommitAsync();
 
-                return Results.Ok(new { balance = balance + req.Amount });
+                return Results.NoContent();
             });
-
-            // GET /accounts/{id}/balance — баланс = SUM записей, а не поле!
-            group.MapGet("/{id:guid}/balance", async (Guid id, AccountsDbContext db) =>
-            {
-                var exists = await db.Accounts.AnyAsync(a => a.Id == id);
-                if (!exists) return Results.NotFound();
-
-                var balance = await db.LedgerEntries
-                    .Where(e => e.AccountId == id)
-                    .SumAsync(e => (long?)e.Direction * e.Amount) ?? 0;
-
-                return Results.Ok(new { balance });
-            });
-
 
             return app;
         }
