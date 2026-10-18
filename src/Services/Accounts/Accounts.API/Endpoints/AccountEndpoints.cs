@@ -1,6 +1,6 @@
 ﻿using Accounts.API.Contracts;
 using Accounts.API.Data;
-using Accounts.API.Entities;
+using Accounts.API.Domain;
 using Accounts.API.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,7 +22,7 @@ namespace Accounts.API.Endpoints
             });
 
             // POST /accounts/{id}/top-up — пополнение (первая запись в ledger!)
-            group.MapPost("/accounts/{id:guid}/top-up", async (Guid id, TopUpRequest req, AccountsDbContext db) =>
+            group.MapPost("/{id:guid}/top-up", async (Guid id, TopUpRequest req, AccountsDbContext db) =>
             {
                 await using var tx = await db.Database.BeginTransactionAsync();
 
@@ -42,7 +42,7 @@ namespace Accounts.API.Endpoints
             });
 
             // GET /accounts/{id}/balance — баланс = SUM записей, а не поле!
-            group.MapGet("/accounts/{id:guid}/balance", async (Guid id, AccountsDbContext db) =>
+            group.MapGet("/{id:guid}/balance", async (Guid id, AccountsDbContext db) =>
             {
                 var exists = await db.Accounts.AnyAsync(a => a.Id == id);
                 if (!exists) return Results.NotFound();

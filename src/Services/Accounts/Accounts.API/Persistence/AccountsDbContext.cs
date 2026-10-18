@@ -1,4 +1,4 @@
-using Accounts.API.Entities;
+using Accounts.API.Domain;
 using Microsoft.EntityFrameworkCore;
 
 namespace Accounts.API.Data;

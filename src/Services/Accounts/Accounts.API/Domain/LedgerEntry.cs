@@ -1,6 +1,6 @@
 using Accounts.API.Enums;
 
-namespace Accounts.API.Entities;
+namespace Accounts.API.Domain;
 
 public sealed class LedgerEntry
 {
@@ -11,7 +11,7 @@ public sealed class LedgerEntry
     public EntryDirection Direction { get; private set; }
     public long BalanceAfter { get; private set; }
     public DateTime CreatedAt { get; private set; }
-    
+
     private LedgerEntry() { }
 
     public LedgerEntry(Guid transactionId, Guid accountId, long amount, EntryDirection direction, long balanceAfter)
