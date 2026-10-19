@@ -11,6 +11,6 @@ builder.Services.AddProblemDetails();  // for errors
 var app = builder.Build();
 
 app.MapAccountEndpoints();
-// app.MapLedgerEndpoints();
+app.MapSagaEndpoints();
 
 app.Run();

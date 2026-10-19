@@ -21,7 +21,7 @@ namespace Accounts.API.Endpoints
                 
                 return account == null 
                     ? Results.NotFound() 
-                    : Results.Ok();
+                    : Results.Ok(account);
             });
 
             // POST: Create account
@@ -46,6 +46,18 @@ namespace Accounts.API.Endpoints
                 await db.SaveChangesAsync();
 
                 return Results.NoContent();
+            });
+
+            // POST: Top-up balance
+            group.MapPost("/{id}/top-up", async (Guid id, decimal amount, AccountsDbContext db) =>
+            {
+                var account = await db.Accounts.FindAsync(id);
+                if (account == null) return Results.NotFound();
+
+                account.TopUpBalance(amount);
+                await db.SaveChangesAsync();
+
+                return Results.Ok(account);
             });
 
             return app;

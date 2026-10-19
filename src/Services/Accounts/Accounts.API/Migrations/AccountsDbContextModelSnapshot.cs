@@ -22,11 +22,15 @@ namespace Accounts.API.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Accounts.API.Entities.Account", b =>
+            modelBuilder.Entity("Accounts.API.Domain.Account", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("numeric")
+                        .HasColumnName("balance");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -36,6 +40,10 @@ namespace Accounts.API.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)")
                         .HasColumnName("currency");
+
+                    b.Property<decimal>("Hold")
+                        .HasColumnType("numeric")
+                        .HasColumnName("hold");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -49,7 +57,7 @@ namespace Accounts.API.Migrations
                     b.ToTable("accounts", (string)null);
                 });
 
-            modelBuilder.Entity("Accounts.API.Entities.LedgerEntry", b =>
+            modelBuilder.Entity("Accounts.API.Domain.LedgerEntry", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()

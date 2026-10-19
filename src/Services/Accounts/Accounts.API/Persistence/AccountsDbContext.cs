@@ -19,6 +19,8 @@ public class AccountsDbContext : DbContext
             entity.HasKey(a => a.Id);
             entity.Property(a => a.UserId).HasColumnName("user_id");
             entity.Property(a => a.Currency).HasColumnName("currency").HasMaxLength(3);
+            entity.Property(a => a.Balance).HasColumnName("balance");
+            entity.Property(a => a.Hold).HasColumnName("hold");
             // одна учётная запись на пользователя в одной валюте
             entity.HasIndex(a => new { a.UserId, a.Currency }).IsUnique();
         });
