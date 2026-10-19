@@ -10,74 +10,40 @@ namespace Accounts.API.Endpoints
             var group = app.MapGroup("/accounts/{id:guid}");
 
             // reserve: замок на деньги (balance -> hold)
-            group.MapPost("/reserve", async (Guid id, decimal amount, AccountsDbContext db) =>
-            {
-                var account = await db.Accounts.FindAsync(id);
-                if (account is null) return Results.NotFound();
-
-                try
-                {
-                    account.Reserve(amount);
-                }
-                catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
-                catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
-
-                await db.SaveChangesAsync();
-                return Results.Ok(account);
-            });
+            group.MapPost("/reserve", (Guid id, decimal amount, AccountsDbContext db) =>
+                RunAccountOperation(id, amount, db, (acc, a) => acc.Reserve(a)));
 
             // credit: зачисление получателю
-            group.MapPost("/credit", async (Guid id, decimal amount, AccountsDbContext db) =>
-            {
-                var account = await db.Accounts.FindAsync(id);
-                if (account is null) return Results.NotFound();
-
-                try
-                {
-                    account.TopUpBalance(amount); // TODO: в будущем заменить на Credit метод в Account - домене
-                }
-                catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
-                catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
-
-                await db.SaveChangesAsync();
-                return Results.Ok(account);
-            });
+            group.MapPost("/credit", (Guid id, decimal amount, AccountsDbContext db) =>
+                RunAccountOperation(id, amount, db, (acc, a) => acc.TopUpBalance(a)));
 
             // commit: финализация, необратимо (деньги в полёте доставлены)
-            group.MapPost("/commit", async(Guid id, decimal amount, AccountsDbContext db) =>
-            {
-                var account = await db.Accounts.FindAsync(id);
-                if (account is null) return Results.NotFound();
-
-                try
-                {
-                    account.Commit(amount);
-                }
-                catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
-                catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
-
-                await db.SaveChangesAsync();
-                return Results.Ok(account);
-            });
+            group.MapPost("/commit", (Guid id, decimal amount, AccountsDbContext db) =>
+                RunAccountOperation(id, amount, db, (acc, a) => acc.Commit(a)));
 
             // release: компенсация (замок снят, деньги вернулись)
-            group.MapPost("/release", async(Guid id, decimal amount, AccountsDbContext db) =>
-            {
-                var account = await db.Accounts.FindAsync(id);
-                if (account is null) return Results.NotFound();
-
-                try
-                {
-                    account.Release(amount);
-                }
-                catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
-                catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
-
-                await db.SaveChangesAsync();
-                return Results.Ok(account);
-            });
+            group.MapPost("/release", (Guid id, decimal amount, AccountsDbContext db) =>
+                RunAccountOperation(id, amount, db, (acc, a) => acc.Release(a)));
 
             return app;
+        }
+
+        // общая сантехника:
+        private static async Task<IResult> RunAccountOperation(
+            Guid id, decimal amount, AccountsDbContext db, Action<Account, decimal> operation)
+        {
+            var account = await db.Accounts.FindAsync(id);
+            if (account is null) return Results.NotFound();
+
+            try
+            {
+                operation(account, amount);
+            }
+            catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
+            catch (InvalidOperationException ex) { return Results.Conflict(new { error = ex.Message }); }
+
+            await db.SaveChangesAsync();
+            return Results.Ok(account);
         }
     }
 }
