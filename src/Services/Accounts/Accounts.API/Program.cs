@@ -1,5 +1,5 @@
-using Accounts.API.Data;
 using Accounts.API.Endpoints;
+using Accounts.API.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);

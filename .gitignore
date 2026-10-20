@@ -369,3 +369,4 @@ FodyWeavers.xsd
 /.env
 /src/Services/Accounts/Accounts.API/appsettings.json
 /src/Services/Accounts/Accounts.API/appsettings.Development.json
+/src/Services/Transfers/Transfers.API/appsettings.json

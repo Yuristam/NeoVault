@@ -1,5 +1,5 @@
-﻿using Accounts.API.Data;
-using Accounts.API.Domain;
+﻿using Accounts.API.Domain;
+using Accounts.API.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace Accounts.API.Endpoints

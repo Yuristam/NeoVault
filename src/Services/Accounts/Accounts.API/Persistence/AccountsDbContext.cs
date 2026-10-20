@@ -1,7 +1,7 @@
 using Accounts.API.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace Accounts.API.Data;
+namespace Accounts.API.Persistence;
 
 public class AccountsDbContext : DbContext
 {

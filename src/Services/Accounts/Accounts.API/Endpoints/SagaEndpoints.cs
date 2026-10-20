@@ -1,5 +1,5 @@
-﻿using Accounts.API.Data;
-using Accounts.API.Domain;
+﻿using Accounts.API.Domain;
+using Accounts.API.Persistence;
 
 namespace Accounts.API.Endpoints
 {
