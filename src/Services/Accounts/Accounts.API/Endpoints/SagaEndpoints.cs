@@ -14,9 +14,12 @@ namespace Accounts.API.Endpoints
                 RunAccountOperation(id, amount, db, (acc, a) => acc.Reserve(a)));
 
             // credit: зачисление получателю
-            group.MapPost("/credit", (Guid id, decimal amount, AccountsDbContext db) =>
-                RunAccountOperation(id, amount, db, (acc, a) => acc.TopUpBalance(a)));
-
+            group.MapPost("/credit", async (Guid id, decimal amount, AccountsDbContext db) => 
+            {
+                await Task.Delay(5000); // имитация долгой обработки платежа
+                return await RunAccountOperation(id, amount, db, (acc, a) => acc.TopUpBalance(a));
+            });
+        
             // commit: финализация, необратимо (деньги в полёте доставлены)
             group.MapPost("/commit", (Guid id, decimal amount, AccountsDbContext db) =>
                 RunAccountOperation(id, amount, db, (acc, a) => acc.Commit(a)));
