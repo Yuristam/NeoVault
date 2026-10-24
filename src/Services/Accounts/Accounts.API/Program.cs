@@ -12,5 +12,6 @@ var app = builder.Build();
 
 app.MapAccountEndpoints();
 app.MapSagaEndpoints();
+app.MapOperationEnpoints();
 
 app.Run();

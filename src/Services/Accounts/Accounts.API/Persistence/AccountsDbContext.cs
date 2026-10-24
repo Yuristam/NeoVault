@@ -10,6 +10,7 @@ public class AccountsDbContext : DbContext
 
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<LedgerEntry> LedgerEntries => Set<LedgerEntry>();
+    public DbSet<Operation> Operations => Set<Operation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,6 +22,7 @@ public class AccountsDbContext : DbContext
             entity.Property(a => a.Currency).HasColumnName("currency").HasMaxLength(3);
             entity.Property(a => a.Balance).HasColumnName("balance");
             entity.Property(a => a.Hold).HasColumnName("hold");
+            entity.Property(a => a.CreatedAt).HasColumnName("created_at");
             // одна учётная запись на пользователя в одной валюте
             entity.HasIndex(a => new { a.UserId, a.Currency }).IsUnique();
         });
@@ -36,6 +38,16 @@ public class AccountsDbContext : DbContext
             entity.Property(e => e.BalanceAfter).HasColumnName("balance_after");
             entity.HasIndex(e => new { e.AccountId, e.Id }); // выписка по счёту
             entity.HasIndex(e => e.TransactionId);           // все записи одной проводки
+        });
+
+        modelBuilder.Entity<Operation>(entity =>
+        {
+            entity.ToTable("operations");
+            entity.HasKey(e => e.Id).HasName("id");
+            entity.Property(e => e.AccountId).HasColumnName("account_id");
+            entity.Property(e => e.Kind).HasColumnName("kind");
+            entity.Property(e => e.Amount).HasColumnName("amount");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
         });
     }
 }

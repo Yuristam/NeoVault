@@ -35,25 +35,25 @@ namespace Transfers.API.Endpoints
                 var client = factory.CreateClient("accounts");
 
                 // шаг 1: замок на деньги отправителя
-                var reserve = await CallAsync(client, $"/accounts/{from}/reserve?amount={Q(amount)}");
+                var reserve = await CallAsync(client, $"/accounts/{from}/reserve?amount={Q(amount)}&transferId={transfer.Id}");
                 if (reserve != StepResult.Ok)
                     return await End(db, transfer,
                         reserve == StepResult.Refused ? TransferStatus.Failed : TransferStatus.Unknown,
                         $"reserve: {reserve}");
 
                 // шаг 2: зачисление получателю
-                var credit = await CallAsync(client, $"/accounts/{to}/credit?amount={Q(amount)}");
+                var credit = await CallAsync(client, $"/accounts/{to}/credit?amount={Q(amount)}&transferId={transfer.Id}");
                 if (credit != StepResult.Ok)
                 {
                     if(credit == StepResult.Refused)
-                        await CallAsync(client, $"/accounts/{from}/release?amount={Q(amount)}"); // компенсация
+                        await CallAsync(client, $"/accounts/{from}/release?amount={Q(amount)}&transferId={transfer.Id}"); // компенсация
                     
                     return await End(db, transfer, credit == StepResult.Refused ? TransferStatus.Failed : TransferStatus.Unknown,
                         $"credit {credit}");
                 }
 
                 // шаг 3: финализация
-                var commit = await CallAsync(client, $"/accounts/{from}/commit?amount={Q(amount)}");
+                var commit = await CallAsync(client, $"/accounts/{from}/commit?amount={Q(amount)}&transferId={transfer.Id}");
                 if (commit != StepResult.Ok) 
                     return await End(db, transfer, TransferStatus.Unknown, $"commit: {commit}");
 
