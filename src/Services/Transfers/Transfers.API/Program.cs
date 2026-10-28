@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Transfers.API.Endpoints;
 using Transfers.API.Persistence;
@@ -10,6 +11,18 @@ builder.Services.AddDbContext<TransfersDbContext>(options =>
 builder.Services.AddHttpClient("accounts", c=>c.BaseAddress = new Uri("http://localhost:5103"));
 builder.Services.AddProblemDetails();
 builder.Services.AddHostedService<UnknownTransfersWorker>();
+
+builder.Services.AddMassTransit(bus =>
+{
+    bus.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host("localhost", "/", h =>
+        {
+            h.Username("guest");
+            h.Password("guest");
+        });
+    });
+});
 
 var app = builder.Build();
 

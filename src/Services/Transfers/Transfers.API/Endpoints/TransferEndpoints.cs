@@ -1,4 +1,6 @@
-﻿using Transfers.API.Domain;
+﻿using MassTransit;
+using Shared.Contracts;
+using Transfers.API.Domain;
 using Transfers.API.Enums;
 using Transfers.API.Integration;
 using Transfers.API.Persistence;
@@ -10,7 +12,7 @@ namespace Transfers.API.Endpoints
         public static IEndpointRouteBuilder MapTransferEndpoints(this IEndpointRouteBuilder app)
         {
             // POST: /transfers?from=<guid>&to=<guid>&amount=50
-            app.MapPost("/transfers", async (Guid from, Guid to, decimal amount, TransfersDbContext db, IHttpClientFactory factory) =>
+            app.MapPost("/transfers", async (Guid from, Guid to, decimal amount, TransfersDbContext db, IHttpClientFactory factory, IPublishEndpoint publisher) =>
             {
                 var transfer = new Transfer(Guid.NewGuid(), from, to, amount, TransferStatus.Pending);
                 db.Transfers.Add(transfer);
@@ -53,11 +55,18 @@ namespace Transfers.API.Endpoints
                     return await CloseTransferAsync(db, transfer, TransferStatus.Unknown, $"commit: {commitStep}");
 
                 transfer.Status = TransferStatus.Completed;
+
+                await publisher.Publish(new TransferCompleted(
+                    transfer.Id, 
+                    transfer.FromAccountId, 
+                    transfer.ToAccountId, 
+                    transfer.Amount));
+
                 await db.SaveChangesAsync();
                 return Results.Ok(transfer);
             });
 
-            app.MapPut("/transfers/{id}", async (Guid id, Guid from, Guid to, decimal amount, TransfersDbContext db, IHttpClientFactory factory) =>
+            app.MapPut("/transfers/{id}", async (Guid id, Guid from, Guid to, decimal amount, TransfersDbContext db, IHttpClientFactory factory, IPublishEndpoint publisher) =>
             {
                 var existing = await db.Transfers.FindAsync(id);
                 if (existing is not null)
@@ -107,6 +116,9 @@ namespace Transfers.API.Endpoints
 
                 transfer.Status = TransferStatus.Completed;
                 await db.SaveChangesAsync();
+
+                await publisher.Publish(new TransferCompleted(transfer.Id, transfer.FromAccountId, transfer.ToAccountId, transfer.Amount));
+
                 return Results.Ok(transfer);
             });
 

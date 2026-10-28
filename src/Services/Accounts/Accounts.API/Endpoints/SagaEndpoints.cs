@@ -54,7 +54,7 @@ namespace Accounts.API.Endpoints
                     if (opKey != null && await db.Operations.FindAsync(opKey) is not null)
                         return Results.Ok(account);
 
-                    await Task.Delay(5000);
+                    // await Task.Delay(5000); // имитация долгого перевода
 
                     account.TopUpBalance(amount);
                     if (opKey != null)
