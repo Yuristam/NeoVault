@@ -71,7 +71,7 @@ namespace Transfers.API.Workers
                     t.Status = TransferStatus.Completed;
                     await db.SaveChangesAsync();
                 }
-                return;// не вышло — остаётся Unknown, следующий тик попробует снова
+                return; // не вышло — остаётся Unknown, следующий тик попробует снова
             }
 
             // 3. reserve пробит? — сага продолжается: credit -> commit

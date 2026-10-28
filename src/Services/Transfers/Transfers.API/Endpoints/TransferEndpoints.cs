@@ -57,6 +57,59 @@ namespace Transfers.API.Endpoints
                 return Results.Ok(transfer);
             });
 
+            app.MapPut("/transfers/{id}", async (Guid id, Guid from, Guid to, decimal amount, TransfersDbContext db, IHttpClientFactory factory) =>
+            {
+                var existing = await db.Transfers.FindAsync(id);
+                if (existing is not null)
+                {
+                    return Results.Ok(existing);
+                }
+
+                var transfer = new Transfer(id, from, to, amount, TransferStatus.Pending);
+                db.Transfers.Add(transfer);
+                await db.SaveChangesAsync();
+
+                var client = factory.CreateClient("accounts");
+                var amountStr = AccountsApiClient.FormatAmount(amount);
+
+                // шаг 1: замок на деньги отправителя
+                var reserveStep = await AccountsApiClient.PostStepAsync(client,
+                    $"/accounts/{from}/reserve?amount={amountStr}&transferId={transfer.Id}");
+
+                if (reserveStep != StepResult.Ok)
+                    return await CloseTransferAsync(db, transfer,
+                        reserveStep == StepResult.Refused ? TransferStatus.Failed : TransferStatus.Unknown, $"reserve: {reserveStep}");
+
+
+                // шаг 2: зачисление получателю
+                var creditStep = await AccountsApiClient.PostStepAsync(client,
+                    $"/accounts/{to}/credit?amount={amountStr}&transferId={transfer.Id}");
+
+                if (creditStep != StepResult.Ok)
+                {
+                    if (creditStep == StepResult.Refused)
+                    {
+                        // единственное место во всей саге, где release безопасен: точно знаем, что деньги не ушли
+                        await AccountsApiClient.PostStepAsync(client,
+                            $"/accounts/{from}/release?amount={amountStr}&transferId={transfer.Id}");
+                    }
+                    return await CloseTransferAsync(db, transfer,
+                        creditStep == StepResult.Refused ? TransferStatus.Failed : TransferStatus.Unknown,
+                        $"credit: {creditStep}");
+                }
+
+                // шаг 3: финализация (бухгалтерия — экономически перевод уже произошёл)
+                var commitStep = await AccountsApiClient.PostStepAsync(client,
+                    $"/accounts/{from}/commit?amount={amountStr}&transferId={transfer.Id}");
+
+                if (commitStep != StepResult.Ok)
+                    return await CloseTransferAsync(db, transfer, TransferStatus.Unknown, $"commit: {commitStep}");
+
+                transfer.Status = TransferStatus.Completed;
+                await db.SaveChangesAsync();
+                return Results.Ok(transfer);
+            });
+
             return app;
         }
 
