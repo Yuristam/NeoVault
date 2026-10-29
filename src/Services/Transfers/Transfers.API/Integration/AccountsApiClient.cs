@@ -7,12 +7,15 @@ namespace Transfers.API.Integration
     {
         public static string FormatAmount(decimal amount) => amount.ToString(CultureInfo.InvariantCulture);
 
-        public static async Task<StepResult> PostStepAsync(HttpClient client, string url)
+        public static async Task<StepResult> PostStepAsync(HttpClient httpClient, string url)
         {
             try
             {
-                var response = await client.PostAsync(url, null);
-                return response.IsSuccessStatusCode ? StepResult.Ok : StepResult.Refused;
+                var response = await httpClient.PostAsync(url, null);
+
+                return response.IsSuccessStatusCode 
+                    ? StepResult.Ok 
+                    : StepResult.Refused;
             }
             catch
             {

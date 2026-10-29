@@ -30,67 +30,75 @@ namespace Transfers.API.Workers
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "reconciliation tick failed");// тик умер — цикл живёт дальше
+                    _logger.LogError(ex, "reconciliation tick failed");
                 }
             }
         }
 
-        private async Task ResolveAllAsync(CancellationToken ct)
+        private async Task ResolveAllAsync(CancellationToken cancellationToken)
         {
             using var scope = _scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<TransfersDbContext>();
+            var dbContext = scope.ServiceProvider.GetRequiredService<TransfersDbContext>();
             var client = _httpClientFactory.CreateClient("accounts");
 
-            var stuck = await db.Transfers
+            var stuck = await dbContext.Transfers
                 .Where(t => t.Status == TransferStatus.Unknown)
-                .ToListAsync(ct);
+                .ToListAsync(cancellationToken);
 
-            foreach(var t in stuck)
+            foreach(var transfer in stuck)
             {
-                await ResolveAsync(db, client, t);
+                await ResolveAsync(dbContext, client, transfer);
             }
         }
 
-        private static async Task ResolveAsync(TransfersDbContext db, HttpClient client, Transfer t)
+        private static async Task ResolveAsync(TransfersDbContext dbContext, HttpClient httpClient, Transfer transfer)
         {
-            var amount = AccountsApiClient.FormatAmount(t.Amount);
+            var amount = AccountsApiClient.FormatAmount(transfer.Amount);
 
             // 1. commit уже пробит? — пополнить статус и уйти
-            if (await AccountsApiClient.IsPerformedAsync(client, $"transfer:{t.Id}:commit"))
+            if (await AccountsApiClient.IsPerformedAsync(httpClient, $"transfer:{transfer.Id}:commit"))
             {
-                t.Status = TransferStatus.Completed;
-                await db.SaveChangesAsync();
+                transfer.Status = TransferStatus.Completed;
+
+                await dbContext.SaveChangesAsync();
                 return;
             }
 
             // 2. credit пробит? — ретраим commit (безопасно: чек не даст дважды)
-            if (await AccountsApiClient.IsPerformedAsync(client, $"transfer:{t.Id}:credit"))
+            if (await AccountsApiClient.IsPerformedAsync(httpClient, $"transfer:{transfer.Id}:credit"))
             {
-                if(await AccountsApiClient.PostStepAsync(client, $"/accounts/{t.FromAccountId}/commit?amount={amount}&transferId={t.Id}") == StepResult.Ok)
+                if(await AccountsApiClient.PostStepAsync(httpClient, 
+                    $"/accounts/{transfer.FromAccountId}/commit?amount={amount}&transferId={transfer.Id}") == StepResult.Ok)
                 {
-                    t.Status = TransferStatus.Completed;
-                    await db.SaveChangesAsync();
+                    transfer.Status = TransferStatus.Completed;
+                    await dbContext.SaveChangesAsync();
                 }
+
                 return; // не вышло — остаётся Unknown, следующий тик попробует снова
             }
 
             // 3. reserve пробит? — сага продолжается: credit -> commit
-            if (await AccountsApiClient.IsPerformedAsync(client, $"transfer:{t.Id}:reserve"))
+            if (await AccountsApiClient.IsPerformedAsync(httpClient, $"transfer:{transfer.Id}:reserve"))
             {
-                var credit = await AccountsApiClient.PostStepAsync(client, $"/accounts/{t.ToAccountId}/credit?amount={amount}&transferId={t.Id}");
-                if (credit != StepResult.Ok) return;// тишина — следующий тик
+                var credit = await AccountsApiClient.PostStepAsync(httpClient, 
+                    $"/accounts/{transfer.ToAccountId}/credit?amount={amount}&transferId={transfer.Id}");
+                
+                if (credit != StepResult.Ok) return;
 
-                if (await AccountsApiClient.PostStepAsync(client, $"/accounts/{t.FromAccountId}/commit?amount={amount}&transferId={t.Id}") == StepResult.Ok)
+                if (await AccountsApiClient.PostStepAsync(httpClient, 
+                    $"/accounts/{transfer.FromAccountId}/commit?amount={amount}&transferId={transfer.Id}") == StepResult.Ok)
                 {
-                    t.Status = TransferStatus.Completed;
-                    await db.SaveChangesAsync();
+                    transfer.Status = TransferStatus.Completed;
+                    await dbContext.SaveChangesAsync();
                 }
+
                 return;
             }
 
             // 4. ничего не пробито — перевода не было
-            t.Status = TransferStatus.Failed;
-            await db.SaveChangesAsync();
+            transfer.Status = TransferStatus.Failed;
+            
+            await dbContext.SaveChangesAsync();
         }
     }
 }

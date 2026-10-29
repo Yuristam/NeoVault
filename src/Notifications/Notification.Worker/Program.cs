@@ -19,7 +19,7 @@ builder.ConfigureServices(services =>
                 rabbitHostConfig.Password("guest");
             });
 
-            rabbitMqConfig.ConfigureEndpoints(context); // очередь создастся сама
+            rabbitMqConfig.ConfigureEndpoints(context);
         });
 
     });

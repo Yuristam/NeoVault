@@ -10,24 +10,28 @@ namespace Accounts.API.Endpoints
             var group = app.MapGroup("/accounts/{id:guid}");
 
             // reserve: замок на деньги (balance -> hold)
-            group.MapPost("/reserve", async (Guid id, decimal amount, Guid? transferId, AccountsDbContext db) =>
+            group.MapPost("/reserve", async (Guid id, decimal amount, Guid? transferId, AccountsDbContext dbContext) =>
             {
-                var account = await db.Accounts.FindAsync(id);
+                var account = await dbContext.Accounts.FindAsync(id);
+
                 if (account is null) return Results.NotFound();
 
-                var opKey = transferId is null ? null : $"transfer:{transferId}:reserve";
+                var operationKey = transferId is null 
+                    ? null 
+                    : $"transfer:{transferId}:reserve";
 
                 try
                 {
                     // чек с таким номером уже пробит? — не делаем дважды, просто отвечаем как в первый раз
-                    if (opKey != null && await db.Operations.FindAsync(opKey) is not null)
+                    if (operationKey != null && await dbContext.Operations.FindAsync(operationKey) is not null)
                         return Results.Ok(account);
 
                     account.Reserve(amount);
-                    if (opKey != null)
-                        db.Operations.Add(new Operation(opKey, id, "reserve", amount));
 
-                    await db.SaveChangesAsync(); // и деньги, и чек — одной транзакцией: либо оба, либо ничего
+                    if (operationKey != null)
+                        dbContext.Operations.Add(new Operation(operationKey, id, "reserve", amount));
+
+                    await dbContext.SaveChangesAsync(); // и деньги, и чек — одной транзакцией: либо оба, либо ничего
                     return Results.Ok(account);
                 }
                 catch (ArgumentException ex)
@@ -41,26 +45,30 @@ namespace Accounts.API.Endpoints
             });
 
             // credit: зачисление получателю
-            group.MapPost("/credit", async (Guid id, decimal amount, Guid? transferId, AccountsDbContext db) => 
+            group.MapPost("/credit", async (Guid id, decimal amount, Guid? transferId, AccountsDbContext dbContext) => 
             {
-                var account = await db.Accounts.FindAsync(id);
+                var account = await dbContext.Accounts.FindAsync(id);
+
                 if (account is null) return Results.NotFound();
 
-                var opKey = transferId is null ? null : $"transfer:{transferId}:credit";
+                var operationKey = transferId is null 
+                    ? null 
+                    : $"transfer:{transferId}:credit";
 
                 try
                 {
                     // чек с таким номером уже пробит? — не делаем дважды, просто отвечаем как в первый раз
-                    if (opKey != null && await db.Operations.FindAsync(opKey) is not null)
+                    if (operationKey != null && await dbContext.Operations.FindAsync(operationKey) is not null)
                         return Results.Ok(account);
 
                     // await Task.Delay(5000); // имитация долгого перевода
 
                     account.TopUpBalance(amount);
-                    if (opKey != null)
-                        db.Operations.Add(new Operation(opKey, id, "credit", amount));
 
-                    await db.SaveChangesAsync(); // и деньги, и чек — одной транзакцией: либо оба, либо ничего
+                    if (operationKey != null)
+                        dbContext.Operations.Add(new Operation(operationKey, id, "credit", amount));
+
+                    await dbContext.SaveChangesAsync(); // и деньги, и чек — одной транзакцией: либо оба, либо ничего
                     return Results.Ok(account);
                 }
                 catch (ArgumentException ex)
@@ -74,24 +82,28 @@ namespace Accounts.API.Endpoints
             });
 
             // commit: финализация, необратимо (деньги в полёте доставлены)
-            group.MapPost("/commit", async (Guid id, decimal amount, Guid? transferId, AccountsDbContext db) => 
+            group.MapPost("/commit", async (Guid id, decimal amount, Guid? transferId, AccountsDbContext dbContext) => 
             {
-                var account = await db.Accounts.FindAsync(id);
+                var account = await dbContext.Accounts.FindAsync(id);
+
                 if (account is null) return Results.NotFound();
 
-                var opKey = transferId is null ? null : $"transfer:{transferId}:commit";
+                var operationKey = transferId is null 
+                    ? null 
+                    : $"transfer:{transferId}:commit";
 
                 try
                 {
                     // чек с таким номером уже пробит? — не делаем дважды, просто отвечаем как в первый раз
-                    if (opKey != null && await db.Operations.FindAsync(opKey) is not null)
+                    if (operationKey != null && await dbContext.Operations.FindAsync(operationKey) is not null)
                         return Results.Ok(account);
 
                     account.Commit(amount);
-                    if (opKey != null)
-                        db.Operations.Add(new Operation(opKey, id, "commit", amount));
+                    
+                    if (operationKey != null)
+                        dbContext.Operations.Add(new Operation(operationKey, id, "commit", amount));
 
-                    await db.SaveChangesAsync(); // и деньги, и чек — одной транзакцией: либо оба, либо ничего
+                    await dbContext.SaveChangesAsync(); // и деньги, и чек — одной транзакцией: либо оба, либо ничего
                     return Results.Ok(account);
                 }
                 catch (ArgumentException ex)
@@ -105,24 +117,28 @@ namespace Accounts.API.Endpoints
             });
 
             // release: компенсация (замок снят, деньги вернулись)
-            group.MapPost("/release", async (Guid id, decimal amount, Guid? transferId, AccountsDbContext db) =>
+            group.MapPost("/release", async (Guid id, decimal amount, Guid? transferId, AccountsDbContext dbContext) =>
             {
-                var account = await db.Accounts.FindAsync(id);
+                var account = await dbContext.Accounts.FindAsync(id);
+                
                 if (account is null) return Results.NotFound();
 
-                var opKey = transferId is null ? null : $"transfer:{transferId}:release";
+                var operationKey = transferId is null 
+                    ? null 
+                    : $"transfer:{transferId}:release";
 
                 try
                 {
                     // чек с таким номером уже пробит? — не делаем дважды, просто отвечаем как в первый раз
-                    if (opKey != null && await db.Operations.FindAsync(opKey) is not null)
+                    if (operationKey != null && await dbContext.Operations.FindAsync(operationKey) is not null)
                         return Results.Ok(account);
 
                     account.Release(amount);
-                    if (opKey != null)
-                        db.Operations.Add(new Operation(opKey, id, "release", amount));
+                    
+                    if (operationKey != null)
+                        dbContext.Operations.Add(new Operation(operationKey, id, "release", amount));
 
-                    await db.SaveChangesAsync(); // и деньги, и чек — одной транзакцией: либо оба, либо ничего
+                    await dbContext.SaveChangesAsync(); // и деньги, и чек — одной транзакцией: либо оба, либо ничего
                     return Results.Ok(account);
                 }
                 catch (ArgumentException ex)

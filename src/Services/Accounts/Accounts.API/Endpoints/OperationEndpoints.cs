@@ -6,10 +6,13 @@ namespace Accounts.API.Endpoints
     {
         public static IEndpointRouteBuilder MapOperationEnpoints(this IEndpointRouteBuilder app)
         {
-            app.MapGet("/operations/{key}", async (string key, AccountsDbContext db) =>
+            app.MapGet("/operations/{key}", async (string key, AccountsDbContext dbContext) =>
             {
-                var op = await db.Operations.FindAsync(key);
-                return op is null ? Results.NotFound() : Results.Ok(op);
+                var operation = await dbContext.Operations.FindAsync(key);
+
+                return operation is null 
+                    ? Results.NotFound() 
+                    : Results.Ok(operation);
             });
 
             return app;

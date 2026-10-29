@@ -26,6 +26,5 @@
             Status = status;
             CreatedAt = DateTime.UtcNow;
         }
-
     }
 }

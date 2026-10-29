@@ -2,9 +2,9 @@
 {
     public class Operation
     {
-        public string Id { get; private set; } = default!; // "transfer:{transferId}:reserve" — и есть первичный ключ
+        public string Id { get; private set; } = default!;
         public Guid AccountId { get; private set; }
-        public string Kind { get; private set; } = default!; // reserve / credit / commit / release
+        public string Kind { get; private set; } = default!;
         public decimal Amount { get; private set; }
         public DateTime CreatedAt { get; private set; }
 
