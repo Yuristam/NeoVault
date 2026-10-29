@@ -19,6 +19,7 @@
     </PackageReference>
     <PackageReference Include="Npgsql" Version="9.0.5" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+    <PackageReference Include="StackExchange.Redis" Version="3.4.20" />
   </ItemGroup>
 
 </Project>

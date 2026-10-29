@@ -1,6 +1,8 @@
 ﻿using Accounts.API.Domain;
 using Accounts.API.Persistence;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
+using System.Text.Json;
 
 namespace Accounts.API.Endpoints
 {
@@ -15,13 +17,30 @@ namespace Accounts.API.Endpoints
                 Results.Ok(await db.Accounts.ToListAsync()));
 
             // GET: Get account by id
-            group.MapGet("/{id}", async (Guid id, AccountsDbContext db) =>
+            group.MapGet("/{id}", async (Guid id, AccountsDbContext db, IConnectionMultiplexer redis) =>
             {
+                var cacheKey = $"account:{id}";
+                var redisDatabase = redis.GetDatabase();
+
+                var cachedJson = await redisDatabase.StringGetAsync(cacheKey);
+                if (cachedJson.HasValue)
+                {
+                    Console.WriteLine("GET: из кеша Redis");
+                    var cachedAccount = JsonSerializer.Deserialize<Account>(cachedJson!);
+                    return Results.Ok(cachedAccount);
+                }
+
                 var account = await db.Accounts.FindAsync(id);
+                if (account == null) return Results.NotFound();
                 
-                return account == null 
-                    ? Results.NotFound() 
-                    : Results.Ok(account);
+                Console.WriteLine("GET: из базы");
+
+                await redisDatabase.StringSetAsync(
+                    cacheKey,
+                    JsonSerializer.Serialize(account),
+                    TimeSpan.FromSeconds(60));
+                
+                return Results.Ok(account);
             });
 
             // POST: Create account
