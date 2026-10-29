@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<TransfersDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("TransfersConnectionString")));
-builder.Services.AddHttpClient("accounts", c=>c.BaseAddress = new Uri("http://localhost:5103"));
+builder.Services.AddHttpClient("accounts", c => c.BaseAddress = new Uri("http://localhost:5103"));
 builder.Services.AddProblemDetails();
 builder.Services.AddHostedService<UnknownTransfersWorker>();
 

@@ -54,13 +54,16 @@ namespace Transfers.API.Endpoints
                 if (commitStep != StepResult.Ok)
                     return await CloseTransferAsync(db, transfer, TransferStatus.Unknown, $"commit: {commitStep}");
 
-                transfer.Status = TransferStatus.Completed;
-
-                await publisher.Publish(new TransferCompleted(
-                    transfer.Id, 
-                    transfer.FromAccountId, 
-                    transfer.ToAccountId, 
-                    transfer.Amount));
+                if (transfer.Status == TransferStatus.Completed)
+                {
+                    await publisher.Publish(new TransferCompleted(
+                        transfer.Id, transfer.FromAccountId, transfer.ToAccountId, transfer.Amount));
+                }
+                else if (transfer.Status == TransferStatus.Failed)
+                {
+                    await publisher.Publish(new TransferFailed(
+                        transfer.Id, transfer.FromAccountId, transfer.ToAccountId, transfer.Amount));
+                }
 
                 await db.SaveChangesAsync();
                 return Results.Ok(transfer);

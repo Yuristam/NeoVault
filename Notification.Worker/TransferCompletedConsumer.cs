@@ -21,6 +21,8 @@ namespace Notification.Worker
                 $"со счёта {completedTransfer.FromAccountId} " +
                 $"на счёт {completedTransfer.ToAccountId}");
 
+            await Task.Delay(TimeSpan.FromSeconds(30));
+
             await Task.CompletedTask;
         }
     }

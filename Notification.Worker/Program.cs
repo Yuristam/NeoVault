@@ -9,6 +9,7 @@ builder.ConfigureServices(services =>
     services.AddMassTransit(massTransitConfig =>
     {
         massTransitConfig.AddConsumer<TransferCompletedConsumer>();
+        massTransitConfig.AddConsumer<TransferFailedConsumer>();
 
         massTransitConfig.UsingRabbitMq((context, rabbitMqConfig) =>
         {
