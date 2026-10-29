@@ -22,6 +22,7 @@ namespace Transfers.API.Workers
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             using var timer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+            
             while (await timer.WaitForNextTickAsync(stoppingToken))
             {
                 try
@@ -38,16 +39,17 @@ namespace Transfers.API.Workers
         private async Task ResolveAllAsync(CancellationToken cancellationToken)
         {
             using var scope = _scopeFactory.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<TransfersDbContext>();
-            var client = _httpClientFactory.CreateClient("accounts");
 
-            var stuck = await dbContext.Transfers
+            var dbContext = scope.ServiceProvider.GetRequiredService<TransfersDbContext>();
+            var httpClient = _httpClientFactory.CreateClient("accounts");
+
+            var stuckTransfers = await dbContext.Transfers
                 .Where(t => t.Status == TransferStatus.Unknown)
                 .ToListAsync(cancellationToken);
 
-            foreach(var transfer in stuck)
+            foreach(var transfer in stuckTransfers)
             {
-                await ResolveAsync(dbContext, client, transfer);
+                await ResolveAsync(dbContext, httpClient, transfer);
             }
         }
 
@@ -56,7 +58,7 @@ namespace Transfers.API.Workers
             var amount = AccountsApiClient.FormatAmount(transfer.Amount);
 
             // 1. commit уже пробит? — пополнить статус и уйти
-            if (await AccountsApiClient.IsPerformedAsync(httpClient, $"transfer:{transfer.Id}:commit"))
+            if (await AccountsApiClient.WasPerformedAsync(httpClient, $"transfer:{transfer.Id}:commit"))
             {
                 transfer.Status = TransferStatus.Completed;
 
@@ -65,7 +67,7 @@ namespace Transfers.API.Workers
             }
 
             // 2. credit пробит? — ретраим commit (безопасно: чек не даст дважды)
-            if (await AccountsApiClient.IsPerformedAsync(httpClient, $"transfer:{transfer.Id}:credit"))
+            if (await AccountsApiClient.WasPerformedAsync(httpClient, $"transfer:{transfer.Id}:credit"))
             {
                 if(await AccountsApiClient.PostStepAsync(httpClient, 
                     $"/accounts/{transfer.FromAccountId}/commit?amount={amount}&transferId={transfer.Id}") == StepResult.Ok)
@@ -78,7 +80,7 @@ namespace Transfers.API.Workers
             }
 
             // 3. reserve пробит? — сага продолжается: credit -> commit
-            if (await AccountsApiClient.IsPerformedAsync(httpClient, $"transfer:{transfer.Id}:reserve"))
+            if (await AccountsApiClient.WasPerformedAsync(httpClient, $"transfer:{transfer.Id}:reserve"))
             {
                 var credit = await AccountsApiClient.PostStepAsync(httpClient, 
                     $"/accounts/{transfer.ToAccountId}/credit?amount={amount}&transferId={transfer.Id}");

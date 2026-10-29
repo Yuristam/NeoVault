@@ -23,7 +23,7 @@ namespace Transfers.API.Integration
             }
         }
 
-        public static async Task<bool> IsPerformedAsync(HttpClient client, string key) =>
+        public static async Task<bool> WasPerformedAsync(HttpClient client, string key) =>
             (await client.GetAsync($"/operations/{key}")).IsSuccessStatusCode;
     }
 }
